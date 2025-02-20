@@ -13,7 +13,7 @@ def call_groq_api(prompt: str, model: str, max_tokens: int) -> str:
             {"role": "user", "content": prompt}
         ],
         "model": model,
-        "max_tokens": max_tokens
+        "max_tokens": 2048
     }
     
     # Retrieve the API key from Streamlit secrets
@@ -40,7 +40,7 @@ def main():
     st.title("Multi-Model Groq API Query")
     st.markdown("Enter your prompt below to get answers from different models using the Groq API.")
     prompt = st.text_input("Enter your prompt:")
-    max_tokens = st.slider("Select max tokens:", min_value=1, max_value=2048, value=128)
+    #max_tokens = st.slider("Select max tokens:", min_value=1, max_value=2048, value=128)
     
     if st.button("Submit"):
         if not prompt:
