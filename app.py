@@ -1,8 +1,6 @@
 import streamlit as st
 import requests
 import base64
-import fitz  # PyMuPDF
-import os
 
 def call_groq_api(prompt: str, model: str, max_tokens: int, image_data: str = None) -> str:
     """
@@ -10,7 +8,7 @@ def call_groq_api(prompt: str, model: str, max_tokens: int, image_data: str = No
     
     Adjust the API endpoint, headers, and payload as required by the Groq API documentation.
     """
-    api_url = "https://api.groq.com/openai/v1/chat/completions"
+    api_url = "https://api.groq.com/openai/v1/chat/completions "
     
     if image_data:
         # For image analysis using llama-3.2-90b-vision-preview
@@ -65,79 +63,43 @@ def call_groq_api(prompt: str, model: str, max_tokens: int, image_data: str = No
     except Exception as e:
         return f"Request failed: {e}"
 
-def extract_text_and_images_from_pdf(pdf_path):
-    """
-    Extract text and images from a PDF file.
-    """
-    text_content = []
-    image_data = []
-    
-    # Open the PDF file
-    pdf_document = fitz.open(pdf_path)
-    
-    for page_num in range(len(pdf_document)):
-        page = pdf_document.load_page(page_num)
-        
-        # Extract text from the page
-        text_content.append(page.get_text())
-        
-        # Extract images from the page
-        image_list = page.get_images(full=True)
-        for image_index, img in enumerate(image_list):
-            xref = img[0]
-            base_image = pdf_document.extract_image(xref)
-            image_bytes = base_image["image"]
-            image_data.append(base64.b64encode(image_bytes).decode('utf-8'))
-    
-    return '\n'.join(text_content), image_data
-
 def main():
     st.title("MUJ Quiz: Get all your answers here!")
-    st.markdown("Enter your question to get answers from different models using preloaded PDF files.")
+    st.markdown("Enter your question or upload an image to get answers from different models.")
     
     # User input for text prompt
     prompt = st.text_input("Enter your prompt:")
+    
+    # Image upload field
+    uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
     
     # Set max_tokens to a fixed value
     max_tokens = 5000
     
     if st.button("Submit"):
-        if not prompt:
-            st.warning("Please enter a prompt!")
+        if not prompt and not uploaded_file:
+            st.warning("Please enter a prompt or upload an image!")
             return
         
-        # Directory containing PDF files
-        pdf_directory = "pdf_files"
-        
-        # Initialize combined text and image data
-        combined_text = ""
-        combined_images = []
-        
-        # Process each PDF file in the directory
-        for filename in os.listdir(pdf_directory):
-            if filename.endswith(".pdf"):
-                pdf_path = os.path.join(pdf_directory, filename)
-                text_content, image_data = extract_text_and_images_from_pdf(pdf_path)
-                combined_text += text_content + "\n"
-                combined_images.extend(image_data)
-        
-        # Combine prompt with extracted text content
-        full_prompt = f"{prompt}\n{combined_text}"
+        image_data = None
+        if uploaded_file:
+            # Encode the uploaded image to base64
+            image_data = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
+            image_data = f"data:image/jpeg;base64,{image_data}"
         
         # Define models for text-based queries
         text_models = ["qwen-2.5-32b", "deepseek-r1-distill-llama-70b", "gemma2-9b-it"]
         answers = {}
         
         with st.spinner("Fetching answers..."):
-            if combined_images:
+            if image_data:
                 # Use llama-3.2-90b-vision-preview for image analysis
-                for img in combined_images:
-                    answer = call_groq_api(full_prompt, "llama-3.2-90b-vision-preview", max_tokens, img)
-                    answers["llama-3.2-90b-vision-preview"] = answer
+                answer = call_groq_api(prompt, "llama-3.2-90b-vision-preview", max_tokens, image_data)
+                answers["llama-3.2-90b-vision-preview"] = answer
             else:
                 # Use other models for text-based queries
                 for model in text_models:
-                    answer = call_groq_api(full_prompt, model, max_tokens)
+                    answer = call_groq_api(prompt, model, max_tokens)
                     answers[model] = answer
         
         st.success("Answers fetched successfully!")
@@ -148,3 +110,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
