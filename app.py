@@ -37,8 +37,8 @@ def call_groq_api(prompt: str, model: str, max_tokens: int) -> str:
         return f"Request failed: {e}"
 
 def main():
-    st.title("Multi-Model Groq API Query")
-    st.markdown("Enter your prompt below to get answers from different models using the Groq API.")
+    st.title("MUJ Quiz: Get all your answers here!")
+    st.markdown("Enter your question below to get answers from different models.")
     prompt = st.text_input("Enter your prompt:")
     
     # Set max_tokens to a fixed value
