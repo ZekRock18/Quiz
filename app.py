@@ -42,7 +42,7 @@ def main():
     prompt = st.text_input("Enter your prompt:")
     
     # Set max_tokens to a fixed value
-    max_tokens = 2048
+    max_tokens = 5000
     
     if st.button("Submit"):
         if not prompt:
