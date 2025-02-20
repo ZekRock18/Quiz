@@ -9,21 +9,39 @@ def call_groq_api(prompt: str, model: str, max_tokens: int, image_data: str = No
     Adjust the API endpoint, headers, and payload as required by the Groq API documentation.
     """
     api_url = "https://api.groq.com/openai/v1/chat/completions"
-    messages = [
-        {"role": "user", "content": prompt}
-    ]
     
     if image_data:
-        messages[0]["content"] = [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": image_data}}
-        ]
-    
-    payload = {
-        "messages": messages,
-        "model": model,
-        "max_tokens": max_tokens
-    }
+        # For image analysis using llama-3.2-90b-vision-preview
+        payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt + "\n"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_data
+                            }
+                        }
+                    ]
+                }
+            ],
+            "model": model,
+            "max_tokens": max_tokens
+        }
+    else:
+        # For text-based queries using other models
+        payload = {
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "model": model,
+            "max_tokens": max_tokens
+        }
     
     # Retrieve the API key from Streamlit secrets
     api_key = st.secrets["GROQ_API_KEY"]
@@ -67,14 +85,22 @@ def main():
         if uploaded_file:
             # Encode the uploaded image to base64
             image_data = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
+            image_data = f"data:image/jpeg;base64,{image_data}"
         
-        models = ["qwen-2.5-32b", "deepseek-r1-distill-llama-70b", "gemma2-9b-it"]
+        # Define models for text-based queries
+        text_models = ["qwen-2.5-32b", "deepseek-r1-distill-llama-70b", "gemma2-9b-it"]
         answers = {}
         
         with st.spinner("Fetching answers..."):
-            for model in models:
-                answer = call_groq_api(prompt, model, max_tokens, image_data)
-                answers[model] = answer
+            if image_data:
+                # Use llama-3.2-90b-vision-preview for image analysis
+                answer = call_groq_api(prompt, "llama-3.2-90b-vision-preview", max_tokens, image_data)
+                answers["llama-3.2-90b-vision-preview"] = answer
+            else:
+                # Use other models for text-based queries
+                for model in text_models:
+                    answer = call_groq_api(prompt, model, max_tokens)
+                    answers[model] = answer
         
         st.success("Answers fetched successfully!")
         st.markdown("### Answers")
