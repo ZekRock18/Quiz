@@ -1,17 +1,26 @@
 import streamlit as st
 import requests
+import base64
 
-def call_groq_api(prompt: str, model: str, max_tokens: int) -> str:
+def call_groq_api(prompt: str, model: str, max_tokens: int, image_data: str = None) -> str:
     """
     Call the Groq API with the given prompt, model, and max_tokens.
     
     Adjust the API endpoint, headers, and payload as required by the Groq API documentation.
     """
     api_url = "https://api.groq.com/openai/v1/chat/completions"
+    messages = [
+        {"role": "user", "content": prompt}
+    ]
+    
+    if image_data:
+        messages[0]["content"] = [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": image_data}}
+        ]
+    
     payload = {
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": messages,
         "model": model,
         "max_tokens": max_tokens
     }
@@ -38,23 +47,33 @@ def call_groq_api(prompt: str, model: str, max_tokens: int) -> str:
 
 def main():
     st.title("MUJ Quiz: Get all your answers here!")
-    st.markdown("Enter your question below to get answers from different models.")
+    st.markdown("Enter your question or upload an image to get answers from different models.")
+    
+    # User input for text prompt
     prompt = st.text_input("Enter your prompt:")
+    
+    # Image upload field
+    uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
     
     # Set max_tokens to a fixed value
     max_tokens = 5000
     
     if st.button("Submit"):
-        if not prompt:
-            st.warning("Please enter a prompt!")
+        if not prompt and not uploaded_file:
+            st.warning("Please enter a prompt or upload an image!")
             return
+        
+        image_data = None
+        if uploaded_file:
+            # Encode the uploaded image to base64
+            image_data = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
         
         models = ["qwen-2.5-32b", "deepseek-r1-distill-llama-70b", "gemma2-9b-it"]
         answers = {}
         
         with st.spinner("Fetching answers..."):
             for model in models:
-                answer = call_groq_api(prompt, model, max_tokens)
+                answer = call_groq_api(prompt, model, max_tokens, image_data)
                 answers[model] = answer
         
         st.success("Answers fetched successfully!")
